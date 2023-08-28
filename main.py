@@ -15,7 +15,7 @@ class MainView:
         self.root = tk.Tk()
         self.root.title("Stock Terminal")
         self.root.config(bg="black")
-        self.root.geometry("855x600")
+        self.root.geometry("870x800")
         self.root.update_idletasks()
 
         # the root frame width
@@ -27,7 +27,11 @@ class MainView:
         # state management for storing the currently active grid slaves
         self.active_frame = None
         # state management for storing the information on the company
-        self.info = None
+        self.info_data = None
+        # state management for storing news about the company
+        self.news_data = None
+        # state management for storing past historical market data on the company
+        self.history_data = None
 
         self.master_widget = tk.Frame(self.root, bg="black")
         self.master_widget.grid(sticky="nw", row=0, column=0)
@@ -67,12 +71,14 @@ class MainView:
 
     def search_query(self, search_bar):
         """
-        Callback function for handling search queries
+        Callback function for handling search queries, fetching info on the security
         :param search_bar: the search bar widget and search content
         """
         query = search_bar.get()
         dc = DesController(query)
-        self.info = dc.get_info()
+        self.info_data = dc.get_info()
+        self.news_data = dc.get_news()
+        self.history_data = dc.get_history()
 
     def function_dropdown(self):
         """
@@ -103,10 +109,10 @@ class MainView:
     def function_navigate(self, selection, root, win_width, win_height):
         """
         Callback function for the function dropdown component
-        :param selection:
-        :param root:
-        :param win_width:
-        :param win_height:
+        :param selection: dropdown item selected
+        :param root: the highest level master widget
+        :param win_width: window width
+        :param win_height: window height
         :return: mount the function to be displayed
         """
 
@@ -119,17 +125,17 @@ class MainView:
         self.active_frame = tk.Frame(root, bg="black")
         self.active_frame.grid(row=1, column=0, sticky='NSEW')
 
-        if self.info:
+        if self.info_data:
             # All Available functions
-            des = Des(self.active_frame, self.info, win_width, win_height)
-            eqs = Eqs(self.active_frame, self.info, win_width, win_height)
-            watc = Watc(self.active_frame, self.info, win_width, win_height)
+            des = Des(self.active_frame, self.info_data, self.history_data, self.news_data, win_width, win_height)
+            eqs = Eqs(self.active_frame, self.info_data, win_width, win_height)
+            watc = Watc(self.active_frame, self.info_data, win_width, win_height)
 
             functions = {"DES": des, "EQS": eqs, "WATC": watc}
             function = functions[self.selection]
             return function.main()
 
-        elif not self.info:
+        elif not self.info_data:
             # TODO default state terminal
             return
 

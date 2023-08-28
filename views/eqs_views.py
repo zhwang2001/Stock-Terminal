@@ -2,9 +2,9 @@ import tkinter as tk
 
 
 class Eqs:
-    def __init__(self, active_frame, info, win_width, win_height):
+    def __init__(self, active_frame, info_data, win_width, win_height):
         self.active_frame = active_frame
-        self.info = info
+        self.info = info_data
         self.win_width = win_width
         self.win_height = win_height
 

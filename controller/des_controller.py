@@ -4,60 +4,33 @@ class DesController:
 
     def __init__(self, query):
         self.query = query
+        self.ticker = yf.Ticker(self.query)
 
-    def get_info(self):
+    def get_info(self) -> list[dict]:
         """
-        Retrieves variety of info on the stock
-        :return: info
+        Retrieves variety of info on the stock such as price metrics, corporate information, and financial data
+        :return: info array
         """
-        ticker = yf.Ticker(self.query)
-        info = ticker.get_info()
-        print(info)
+        info = self.ticker.get_info()
         return info
 
-    def get_open_price(self):
+    def get_news(self) -> list[dict]:
         """
-        Retrieves the last opening price of the stock
-        :return: open price
+        Retrieves the latest news on the stock
+        :return: news array
         """
-        return "open_price"
+        news = self.ticker.get_news()
+        return news
 
+    def get_history(self):
+        """
+        Retrieves the historical market data on the stock
+        :return: history nested array
+        """
+        """
+        history = yf.download(str(self.ticker), start="2023-01-01", end="2023-01-15")
+        print(history['Close'].values)
+        return history
+        """
+        return self.ticker.history(period='5d', interval="2m")
 
-    def get_close_price(self):
-        """
-        Retrieves the last closing price of the stock
-        :return: close price
-        """
-        return "close_price"
-
-
-    def get_low_price(self):
-        """
-        Retrieves the last lowest transaction price of the stock
-        :return: low price
-        """
-        return "low_price"
-
-
-    def get_high_price(self):
-        """
-        Retrieves the last highest transaction price of the stock
-        :return: high price
-        """
-        return "high_price"
-
-
-    def get_description(self):
-        """
-        Retrieves the description of the security
-        :return: description
-        """
-        return "description"
-
-
-    def get_stock_name(self):
-        """
-        Retrieves the name of the security
-        :return: name
-        """
-        return "name"
