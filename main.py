@@ -28,6 +28,9 @@ class MainView:
         self.active_frame = None
         # state management for storing the information on the company
         self.info = None
+
+        self.master_widget = tk.Frame(self.root, bg="black")
+        self.master_widget.grid(sticky="nw", row=0, column=0)
         # Used for searching up securities
         self.search_bar()
         # Used for changing functions
@@ -52,14 +55,14 @@ class MainView:
         :param root: the tkinter window
         """
         # Search bar for typing in query
-        search_bar = tk.Entry(width=45, borderwidth=5)
+        search_bar = tk.Entry(self.master_widget, width=45, borderwidth=5)
         search_bar.insert(0, "Enter a Ticker Symbol...")
         search_bar.grid(sticky="w", row=0, column=0, ipadx=1, ipady=1)
 
         # Submit button for submitting the search query
-        search_button = tk.Button(self.root, overrelief="sunken", text="Search",
+        search_button = tk.Button(self.master_widget, overrelief="sunken", text="Search",
                                   command=lambda: self.search_query(search_bar))
-        search_button.place(x=382, y=1)
+        search_button.grid(row=0, column=2)
 
 
     def search_query(self, search_bar):
@@ -90,12 +93,12 @@ class MainView:
             self.function_navigate(default, self.root, self.win_width, self.win_height)
 
         # Dropdown menu for function navigation
-        option_menu = tk.OptionMenu(self.root, placeholder, "DES", "EQS", "WATC",
+        option_menu = tk.OptionMenu(self.master_widget, placeholder, "DES", "EQS", "WATC",
                                     command=lambda selection: self.function_navigate(selection,
                                                                                      self.root,
                                                                                      self.win_width,
                                                                                      self.win_height))
-        option_menu.place(x=460, y=0)
+        option_menu.grid(row=0, column=3)
 
     def function_navigate(self, selection, root, win_width, win_height):
         """
@@ -127,7 +130,7 @@ class MainView:
             return function.main()
 
         elif not self.info:
-            # TODO default state of hkg
+            # TODO default state terminal
             return
 
 

@@ -114,11 +114,27 @@ class Des:
         price_frame = tk.LabelFrame(self.third_row_master, bg="black", fg="white", text="Price Metrics")
         price_frame.grid(sticky="nw", row=3, column=0)
 
-        # Price change since last update
+        # Previous close - close
         px_chg = tk.Label(price_frame, anchor="w", bg="black", fg="orange", text=f"Px/Chg {'1D'} ({self.info.get('currency')})")
         px_chg.grid(sticky="w", row=0, column=0)
-        px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="white", text=f"{1403.5} | {'+0.11'}%")
-        px_chg_value.grid(sticky="e", row=0, column=1)
+        # Calculations
+        new_price = self.info.get('currentPrice')
+        old_price = self.info.get('previousClose')
+        price_change = round(new_price - old_price, 2)
+        percent_chg = round((new_price - old_price) / old_price * 100, 2)
+        # if positive change
+        if price_change > 0 or percent_chg > 0:
+            px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="white",
+                                    text=f"+{price_change} | +{percent_chg}%")
+            px_chg_value.grid(sticky="e", row=0, column=1)
+        else:
+            # if no change or negative change
+            px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="white",
+                                    text=f"{price_change} | {percent_chg}%")
+            px_chg_value.grid(sticky="e", row=0, column=1)
+
+
+
 
         # 52-week high date
         year_high = tk.Label(price_frame, anchor="w", bg="black", fg="orange", text=f"52 Wk H")
@@ -133,11 +149,21 @@ class Des:
         year_low_value = tk.Label(price_frame, anchor="e", bg="black", fg="white", text=self.info.get('fiftyTwoWeekLow'))
         year_low_value.grid(sticky="e", row=2, column=1)
 
-        # Year to date % change
-        ytd_chg = tk.Label(price_frame, anchor="w", bg="black", fg="orange", text=f"YTD Chg/%")
-        ytd_chg.grid(sticky="w", row=3, column=0)
-        ytd_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="white", text=f"{'-61.814'} | {'-4.9'}%")
-        ytd_chg_value.grid(sticky="e", row=3, column=1)
+        # 52 Week change % change
+        year_px_chg = tk.Label(price_frame, anchor="w", bg="black", fg="orange", text=f"52 Wk Chg/%")
+        year_px_chg.grid(sticky="w", row=3, column=0)
+        year_px_chg_percent = round(self.info.get('52WeekChange') * 100, 2)
+        # Price Change = New price - Old price
+        year_px_chg_value = round(new_price - (new_price / (1 + year_px_chg_percent / 100)), 1)
+        # if 52 week stock price change is positive
+        if year_px_chg_percent > 0 or year_px_chg_value > 0:
+            year_px_chg = tk.Label(price_frame, anchor="e", bg="black", fg="white", text=f"+{year_px_chg_value} | +{year_px_chg_percent}%")
+            year_px_chg.grid(sticky="e", row=3, column=1)
+        # if 52 week stock price change is 0 or negative
+        else:
+            year_px_chg = tk.Label(price_frame, anchor="e", bg="black", fg="white", text=f"{year_px_chg_value} | {year_px_chg_percent}%")
+            year_px_chg.grid(sticky="e", row=3, column=1)
+
 
         separator = ttk.Separator(price_frame, orient="horizontal")
         separator.grid(sticky="ew", row=4, column=0, padx="2", pady="5", columnspan=2)

@@ -5,8 +5,6 @@ class DesController:
     def __init__(self, query):
         self.query = query
 
-
-
     def get_info(self):
         """
         Retrieves variety of info on the stock
@@ -14,6 +12,7 @@ class DesController:
         """
         ticker = yf.Ticker(self.query)
         info = ticker.get_info()
+        print(info)
         return info
 
     def get_open_price(self):
