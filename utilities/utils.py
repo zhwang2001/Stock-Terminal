@@ -18,4 +18,6 @@ def date_conversion(unix_date: int, output: Literal['date', 'time', 'datetime'])
         return date_time.strftime("%Y-%m-%d, %H:%M:%S" )
 
 
-
+def resize_window(old_width, old_height, new_width, new_height):
+    old_width = new_width
+    old_height = new_height

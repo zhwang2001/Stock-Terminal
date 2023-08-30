@@ -4,7 +4,6 @@ from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from utilities.utils import date_conversion
-import pandas as pd
 from datetime import datetime
 import webbrowser
 
@@ -20,12 +19,14 @@ class Des:
         self.info_data = info_data
         self.news_data = news_data
         self.history_data = history_data
-        self.win_width = win_width
+        self.win_width = win_width - 20
         self.win_height = win_height
-        # Master widget for all widgets in the third row
-        self.third_row_master = tk.Frame(self.page_frame, bg="black", width=self.win_width)
-        self.third_row_master.grid(sticky="nw", row=3, column=0, columnspan=3)
 
+        # Master widget for all widgets in the des function
+        self.des_master = tk.Frame(self.page_frame, bg="black", width=self.win_width)
+        self.des_master.grid(sticky="nsew", row=0, column=0, columnspan=3)
+        self.des_master.rowconfigure(0, weight=1)
+        self.des_master.columnconfigure(0, weight=1)
     def main(self):
         self.security()
         self.description()
@@ -37,9 +38,8 @@ class Des:
 
     def security(self):
         """Key details about the security such as the price per share and the volume traded"""
-        security_frame = tk.LabelFrame(self.page_frame, width=self.win_width,
-                                       bg="black", fg="white", text="Security")
-        security_frame.grid(columnspan=5, sticky="w", row=1, column=0)
+        security_frame = tk.LabelFrame(self.des_master, bg="black", fg="white", text="Security")
+        security_frame.grid(columnspan=5, sticky="nsew", row=0, column=0)
 
         stock_name = tk.Label(security_frame, bg="black", fg="deep sky blue",
                               font="Helvetica 12 bold", text=self.info_data.get('longName'))
@@ -84,12 +84,12 @@ class Des:
         sector_value.grid(sticky="w", row=1, column=4)
 
         # Industry information
-        classification = tk.Label(security_frame, anchor="e", font="Helvetica 10", padx='2',
+        classification = tk.Label(security_frame, anchor="w", font="Helvetica 10", padx='2',
                                   bg="black", fg="orange", text=f"{'Classification'}")
-        classification.grid(sticky="e", row=2, column=3)
-        industry = tk.Label(security_frame, anchor="e", font="Helvetica 10", padx='2',
+        classification.grid(sticky="w", row=2, column=3)
+        industry = tk.Label(security_frame, anchor="w", font="Helvetica 10", padx='2',
                             bg="black", fg="white", text=f"{self.info_data.get('industry')}")
-        industry.grid(sticky="e", row=2, column=4)
+        industry.grid(sticky="w", row=2, column=4)
 
         # Type of asset
         quote_type = tk.Label(security_frame, anchor="w", font="Helvetica 10", padx='2',
@@ -109,12 +109,14 @@ class Des:
 
     def description(self):
         """The description of the stock"""
-        desc_frame = tk.LabelFrame(self.page_frame, bg="black", fg="white", text="Description")
-        desc_frame.grid(sticky="w", row=2, column=0)
+        desc_frame = tk.LabelFrame(self.des_master, bg="black", fg="white", text="Description")
+        desc_frame.grid(sticky="nsew", row=1, column=0, columnspan=3)
+        desc_frame.rowconfigure(0, weight=1)
+        desc_frame.rowconfigure(0, weight=1)
+
         desc = tk.Message(
             desc_frame,
-            anchor="w",
-            width=self.win_width - 20,
+            width=self.win_width,
             bg="black",
             fg="orange",
             text=self.info_data.get("longBusinessSummary"),
@@ -146,14 +148,17 @@ class Des:
         price_graph.plot(close_prices, color="teal")
 
         # Initializing the tkinter canvas
-        canvas = FigureCanvasTkAgg(fig, master=self.third_row_master)
+        canvas = FigureCanvasTkAgg(fig, master=self.des_master)
         canvas.draw()
-        canvas.get_tk_widget().grid(row=0, column=0, columnspan=2, sticky="nw")
+        canvas.get_tk_widget().grid(row=2, column=0, columnspan=2, sticky="nw")
 
     def news(self):
         """The most recent news on the stock"""
-        news_frame = tk.LabelFrame(self.third_row_master, bg="black", fg="white", text="News")
-        news_frame.grid(sticky="nw", row=0, column=2)
+        news_frame = tk.LabelFrame(self.des_master, bg="black", fg="white", text="News")
+        news_frame.grid(sticky="nsew", row=2, column=2)
+        news_frame.rowconfigure(0, weight=1)
+        news_frame.columnconfigure(0, weight=1)
+
         # limit to 9 news articles if news_data has more than 9 articles else use all news_data articles
         self.stop = 9 if len(self.news_data) >= 9 else len(self.news_data)
         for news_index in range(1, self.stop):
@@ -162,7 +167,7 @@ class Des:
             recent_news_title = f"{title[:47]}..." if len(title) >= 47 else title
             news_link = self.news_data[news_index].get('link')
             news_widget = tk.Label(news_frame, bg='black', fg="white", anchor="w", text=recent_news_title, cursor="hand2")
-            news_widget.grid(sticky='nw', row=news_index, column=0)
+            news_widget.grid(sticky='nsew', row=news_index, column=0)
 
             # Lambda functions to pass news_link as an argument, so that the correct link widget is used with the
             # current iteration of the for loop
@@ -175,7 +180,7 @@ class Des:
                 webbrowser.open(news_link)
             def handle_on_enter(e, news_link, news_widget):
                 news_widget.config(bg="black", fg="orange", font="TkDefaultFont 10 underline")
-            def handle_on_leave(event, news_link, news_widget):
+            def handle_on_leave(e, news_link, news_widget):
                 news_widget.config(bg="black", fg="white", font="TkDefaultFont 10")
 
             news_widget.bind('<Button-1>', open_link)
@@ -198,8 +203,10 @@ class Des:
 
     def price_metrics(self):
         """A measure on how price relates to other metrics like time or earnings"""
-        price_frame = tk.LabelFrame(self.third_row_master, bg="black", fg="white", text="Price Metrics")
-        price_frame.grid(sticky="nw", row=1, column=0)
+        price_frame = tk.LabelFrame(self.des_master, bg="black", fg="white", text="Price Metrics")
+        price_frame.grid(sticky="nsew", row=3, column=0)
+        price_frame.rowconfigure(0, weight=1)
+        price_frame.columnconfigure(0, weight=1)
 
         # Previous close - close
         px_chg = tk.Label(price_frame, anchor="w", bg="black", fg="orange",
@@ -286,8 +293,10 @@ class Des:
 
     def earnings_dividends(self):
         """The companies earnings compared to other metrics as well as dividends"""
-        earnings_frame = tk.LabelFrame(self.third_row_master, bg="black", fg="white", text="Earnings & Dividends")
-        earnings_frame.grid(sticky="nw", row=1, column=1)
+        earnings_frame = tk.LabelFrame(self.des_master, bg="black", fg="white", text="Earnings & Dividends")
+        earnings_frame.grid(sticky="nsew", row=3, column=1)
+        earnings_frame.rowconfigure(0, weight=1)
+        earnings_frame.columnconfigure(0, weight=1)
 
         # Trailing 12 month eps
         t12_eps = tk.Label(earnings_frame, bg="black", fg="orange", text=f"T12M EPS ({self.info_data.get('currency')})")
@@ -362,13 +371,15 @@ class Des:
 
     def corporate_info(self):
         """Information on the corporation and management"""
-        corporate_frame = tk.LabelFrame(self.third_row_master, bg="black", fg="white", text="Corporate Info")
-        corporate_frame.grid(sticky="nw", row=1, column=2)
+        corporate_frame = tk.LabelFrame(self.des_master, bg="black", fg="white", text="Corporate Info")
+        corporate_frame.grid(sticky="nsew", row=3, column=2)
+        corporate_frame.rowconfigure(0, weight=1)
+        corporate_frame.columnconfigure(0, weight=1)
 
         # Corporate Website
         website = tk.Label(corporate_frame, bg="black", fg="orange", text="Website")
         website.grid(sticky="w", row=0, column=0)
-        website_value = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('website'))
+        website_value = tk.Label(corporate_frame, anchor="e", bg="black", fg="white", text=self.info_data.get('website'))
         website_value.grid(sticky="e", row=0, column=1)
 
         # Location of the Headquarters
