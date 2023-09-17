@@ -1,21 +1,31 @@
 import tkinter as tk
 from tkinter import ttk
 
+import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
 from utilities.utils import date_conversion
 from datetime import datetime
-import webbrowser
-
+from controllers.des_controller import handle_on_enter, handle_on_leave, handle_open_link
 
 class Des:
+    """
+    Broad overview of the stocks, encompassing, financial and news data
+    """
     def __init__(self, active_frame, info_data, history_data, news_data, win_width, win_height):
         """
+        Initialization of variables
         :param active_frame: Master widget containing all the currently active slave widgets
+        :param info_data: A large quantity of data on the stock
+        :param history_data: Historical price data on the stock
+        :param news_data: The most recent 8 news articles
         :param win_width: The window's width
         :param win_height: The window's height
         """
-        self.page_frame = active_frame
+        self.active_frame = active_frame
         self.info_data = info_data
         self.news_data = news_data
         self.history_data = history_data
@@ -23,14 +33,16 @@ class Des:
         self.win_height = win_height
 
         # Master widget for all widgets in the des function
-        self.des_master = tk.Frame(self.page_frame, bg="black", width=self.win_width)
+        self.des_master = tk.Frame(self.active_frame, bg="black", width=self.win_width)
         self.des_master.grid(sticky="nsew", row=0, column=0, columnspan=3)
         self.des_master.rowconfigure(0, weight=1)
         self.des_master.columnconfigure(0, weight=1)
+
+
     def main(self):
         self.security()
         self.description()
-        self.plot()
+        self.hist_price_plot()
         self.news()
         self.price_metrics()
         self.earnings_dividends()
@@ -123,10 +135,10 @@ class Des:
         )
         desc.grid(row=3, column=0)
 
-    def plot(self):
+    def hist_price_plot(self):
         """A graph showing price changes of the stock over time"""
         # Initializing figure that will contain plot, color outside the axes
-        fig = Figure(facecolor="black", figsize=(6, 2.5), dpi=75)
+        fig = Figure(facecolor="black", figsize=(6, 2.5), dpi=75, tight_layout=True)
         # historical market data
         history_data = self.history_data
         # Initializing subplot (area within axes)
@@ -141,11 +153,19 @@ class Des:
         price_graph.spines['top'].set_color('none')
         price_graph.spines['bottom'].set_color('none')
 
-        # Extracting date and close price columns
-        # dates = history_data.index
+        # Extracting date and converting to formatted string
+        str_dates = history_data.index.strftime('%Y/%m/%d')
+        # All closing prices
         close_prices = history_data['Close'].values
+        # Create a linear sequence of x values based on the number of data points
+        # only 5 x values are displayed, they are evenly spaced apart on the x-axis
+        x_values = np.linspace(0, len(str_dates) - 1, 5, dtype=int)
 
+        # Set the x-axis tick labels to be the original dates
         price_graph.plot(close_prices, color="teal")
+
+        # display a small fraction
+        price_graph.set_xticks(x_values, str_dates[x_values], rotation=0)
 
         # Initializing the tkinter canvas
         canvas = FigureCanvasTkAgg(fig, master=self.des_master)
@@ -160,28 +180,24 @@ class Des:
         news_frame.columnconfigure(0, weight=1)
 
         # limit to 9 news articles if news_data has more than 9 articles else use all news_data articles
-        self.stop = 9 if len(self.news_data) >= 9 else len(self.news_data)
+        self.stop = 8 if len(self.news_data) >= 8 else len(self.news_data)
         for news_index in range(1, self.stop):
             title = self.news_data[news_index].get('title')
             # if the title has 47 characters or more, then limit it to the first 46 and add a text elipsis
             recent_news_title = f"{title[:47]}..." if len(title) >= 47 else title
             news_link = self.news_data[news_index].get('link')
-            news_widget = tk.Label(news_frame, bg='black', fg="white", anchor="w", text=recent_news_title, cursor="hand2")
+            news_widget = tk.Label(news_frame, bg='black', fg="white", anchor="w",
+                                   text=recent_news_title, cursor="hand2")
             news_widget.grid(sticky='nsew', row=news_index, column=0)
 
             # Lambda functions to pass news_link as an argument, so that the correct link widget is used with the
             # current iteration of the for loop
-            open_link= lambda event, news_link=news_link, news_widget=news_widget: handle_open_link(event, news_link, news_widget)
-            on_enter= lambda event, news_link=news_link, news_widget=news_widget: handle_on_enter(event, news_link, news_widget)
-            on_leave= lambda event, news_link=news_link, news_widget=news_widget: handle_on_leave(event, news_link, news_widget)
-
-            # event handlers
-            def handle_open_link(e, news_link, news_widget):
-                webbrowser.open(news_link)
-            def handle_on_enter(e, news_link, news_widget):
-                news_widget.config(bg="black", fg="orange", font="TkDefaultFont 10 underline")
-            def handle_on_leave(e, news_link, news_widget):
-                news_widget.config(bg="black", fg="white", font="TkDefaultFont 10")
+            open_link = lambda event, news_link=news_link, news_widget=news_widget: \
+                handle_open_link(event, news_link, news_widget)
+            on_enter = lambda event, news_link=news_link, news_widget=news_widget: \
+                handle_on_enter(event, news_link, news_widget)
+            on_leave = lambda event, news_link=news_link, news_widget=news_widget: \
+                handle_on_leave(event, news_link, news_widget)
 
             news_widget.bind('<Button-1>', open_link)
             news_widget.bind('<Enter>', on_enter)
@@ -219,11 +235,16 @@ class Des:
         percent_chg = round((new_price - old_price) / old_price * 100, 2)
         # if positive change
         if price_change > 0 or percent_chg > 0:
-            px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="white",
+            px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="green",
                                     text=f"+{price_change} | +{percent_chg}%")
             px_chg_value.grid(sticky="e", row=0, column=1)
+        # else if negative change
+        elif price_change < 0 or percent_chg < 0:
+            px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="red",
+                                    text=f"{price_change} | {percent_chg}%")
+            px_chg_value.grid(sticky="e", row=0, column=1)
+        # unchanged price
         else:
-            # if no change or negative change
             px_chg_value = tk.Label(price_frame, anchor="e", bg="black", fg="white",
                                     text=f"{price_change} | {percent_chg}%")
             px_chg_value.grid(sticky="e", row=0, column=1)
@@ -386,31 +407,40 @@ class Des:
         website = tk.Label(corporate_frame, bg="black", fg="orange", text="Location")
         website.grid(sticky="w", row=1, column=0)
         website_value = tk.Label(corporate_frame, bg="black", fg="white",
-                                 text=f"{self.info_data.get('city')}, {self.info_data.get('state')}, {self.info_data.get('country')}")
+                                 text=f"{self.info_data.get('city')}, "
+                                      f"{self.info_data.get('state')}, "
+                                      f"{self.info_data.get('country')}")
         website_value.grid(sticky="e", row=1, column=1)
 
         # Number of employees
         empls = tk.Label(corporate_frame, bg="black", fg="orange", text=f"Employees")
         empls.grid(sticky="w", row=2, column=0)
-        empls_value = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('fullTimeEmployees'))
+        empls_value = tk.Label(corporate_frame, bg="black", fg="white",
+                               text=self.info_data.get('fullTimeEmployees'))
         empls_value.grid(sticky="e", row=2, column=1)
 
         # Chief Executive Officer
-        ceo = tk.Label(corporate_frame, bg="black", fg="orange", text=self.info_data.get('companyOfficers')[0]['title'])
+        ceo = tk.Label(corporate_frame, bg="black", fg="orange",
+                       text=self.info_data.get('companyOfficers')[0]['title'])
         ceo.grid(sticky="w", row=3, column=0)
-        ceo_value = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('companyOfficers')[0]['name'])
+        ceo_value = tk.Label(corporate_frame, bg="black", fg="white",
+                             text=self.info_data.get('companyOfficers')[0]['name'])
         ceo_value.grid(sticky="e", row=3, column=1)
 
         # Key executive 2
-        exec_2 = tk.Label(corporate_frame, bg="black", fg="orange", text=self.info_data.get('companyOfficers')[1]['title'])
+        exec_2 = tk.Label(corporate_frame, bg="black", fg="orange",
+                          text=self.info_data.get('companyOfficers')[1]['title'])
         exec_2.grid(sticky="w", row=4, column=0)
-        exec_2 = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('companyOfficers')[1]['name'])
+        exec_2 = tk.Label(corporate_frame, bg="black", fg="white",
+                          text=self.info_data.get('companyOfficers')[1]['name'])
         exec_2.grid(sticky="e", row=4, column=1)
 
         # Key executive 3
-        exec_3 = tk.Label(corporate_frame, bg="black", fg="orange", text=self.info_data.get('companyOfficers')[2]['title'])
+        exec_3 = tk.Label(corporate_frame, bg="black", fg="orange",
+                          text=self.info_data.get('companyOfficers')[2]['title'])
         exec_3.grid(sticky="w", row=5, column=0)
-        exec_3 = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('companyOfficers')[2]['name'])
+        exec_3 = tk.Label(corporate_frame, bg="black", fg="white",
+                          text=self.info_data.get('companyOfficers')[2]['name'])
         exec_3.grid(sticky="e", row=5, column=1)
 
         separator = ttk.Separator(corporate_frame, orient="horizontal")
@@ -419,11 +449,13 @@ class Des:
         # Estimated p/e to growth ratio
         peg = tk.Label(corporate_frame, bg="black", fg="orange", text='Est PEG Ratio')
         peg.grid(sticky="w", row=7, column=0)
-        peg_value = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('pegRatio'))
+        peg_value = tk.Label(corporate_frame, bg="black", fg="white",
+                             text=self.info_data.get('pegRatio'))
         peg_value.grid(sticky="e", row=7, column=1)
 
         # Measure of stock volatility
         beta_ukx = tk.Label(corporate_frame, bg="black", fg="orange", text=f"Beta")
         beta_ukx.grid(sticky="w", row=8, column=0)
-        beta_ukx_value = tk.Label(corporate_frame, bg="black", fg="white", text=self.info_data.get('beta'))
+        beta_ukx_value = tk.Label(corporate_frame, bg="black", fg="white",
+                                  text=self.info_data.get('beta'))
         beta_ukx_value.grid(sticky="e", row=8, column=1)
