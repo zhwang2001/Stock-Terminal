@@ -27,9 +27,11 @@ class Eqrv:
         self.win_width = win_width
         self.win_height = win_height
         # list of competitor tickers
-        self.comp_list = None
+        self.stock_list = None
         # list[dict] of competitor info
-        self.comp_info = None
+        self.stock_info = None
+        # The stock's ticker symbol
+        self.symbol = None
         # alpha vantage variable for storing eps history depth
         self.hist_range = 1
         # Master widget for all widgets in the eqrv function
@@ -46,7 +48,7 @@ class Eqrv:
         """A table Compares current and historical metrics of selected stock and competitors"""
 
         cvh_frame = tk.LabelFrame(self.eqrv_master, bg="black", fg="white", labelanchor="n",
-                                  text=f"Current vs {self.hist_range}yr Average historical Premium")
+                                  text=f"Current vs {self.hist_range}yr Average Historical Premium")
         cvh_frame.grid(row=1, column=0, sticky="w")
 
         tab_system = ttk.Notebook(self.eqrv_master)
@@ -100,33 +102,27 @@ class Eqrv:
             year_trend.grid(sticky="e", row=1, column=10)
 
         def row():
-            # Blended forward P/E ratio
+            # P/E ratio
             pe = tk.Label(cvh_frame, bg="black", fg="orange", text="P/E")
             pe.grid(sticky="w", row=3, column=0)
 
-            # Blended forward EV/EBITDA
+            # EV/EBITDA
             ebitda = tk.Label(cvh_frame, bg="black", fg="orange", text="EV/EBITDA")
             ebitda.grid(sticky="w", row=4, column=0)
 
         def values():
-            # Blended forward P/E current percent premium
-            # TODO get comps data to calculate pe_current_value
-            ec = EqrvController(self.historical_earnings, self.info_data, self.hist_range)
-            # stock_info = ec.handle_stock_info()
-            self.comp_list = ['INTC', 'AAPL', 'AMD']
-            self.comp_info = ec.handle_competitor_info(competitors = self.comp_list)
 
             forward_pe = self.info_data.get('forwardPE')
             pe_current_value = round(forward_pe, 2)
             pe_current = tk.Label(cvh_frame, bg="black", fg="deep sky blue", text=f"{pe_current_value}%")
             pe_current.grid(sticky="e", row=3, column=2)
 
-            # Blended forward P/E current percent premium
+            # P/E current percent premium
             pe_hist_avg_value = -13
             pe_hist_avg = tk.Label(cvh_frame, bg="black", fg="orange", text=f"{pe_hist_avg_value}%")
             pe_hist_avg.grid(sticky="e", row=3, column=4)
 
-            # Blended forward P/E difference between historical and current premiums
+            # P/E difference between historical and current premiums
             pe_diff_value = pe_current_value - pe_hist_avg_value
             # Blended forward P/E standard deviation
             pe_sd_value = -0.9
@@ -146,19 +142,19 @@ class Eqrv:
             # display a mini plot of the historical eps data
             self.hist_eps_plot(cvh_frame)
 
-            # Blended forward EV/EBITDA  current percent premium
+            # EV/EBITDA  current percent premium
             ebitda_current_value = -9
             ebitda_current = tk.Label(cvh_frame, bg="black", fg="deep sky blue", text=f"{ebitda_current_value}%")
             ebitda_current.grid(sticky="e", row=4, column=2)
 
-            # Blended forward EV/EBITDA historical group average percent premium
+            # EV/EBITDA historical group average percent premium
             ebitda_hist_avg_value = 1
             ebitda_hist_avg = tk.Label(cvh_frame, bg="black", fg="orange", text=f"{ebitda_hist_avg_value}%")
             ebitda_hist_avg.grid(sticky="e", row=4, column=4)
 
-            # Blended forward P/E difference between historical and current premiums
+            # P/E difference between historical and current premiums
             ebitda_diff_value = ebitda_current_value - ebitda_hist_avg_value
-            # Blended forward EV/EBITDA standard deviation
+            # EV/EBITDA standard deviation
             ebitda_sd_value = -1.2
             # if current is cheaper than historical average
             if ebitda_diff_value <= 0:
@@ -198,8 +194,7 @@ class Eqrv:
         eps_graph.spines['bottom'].set_color('none')
 
         # Extracting the eps values using the date key and historical range
-        x_keys: list = []
-        y_values: list = []
+        x_keys, y_values = [], []
         # extract historical data on a quarterly basis
         for index, date in enumerate(historical_earnings):
             if index + 1 == self.hist_range * 4 + 1:
@@ -229,9 +224,17 @@ class Eqrv:
         summary_frame = tk.LabelFrame(self.eqrv_master, bg="black", fg="white", labelanchor='n', text='Summary of Current Multiples')
         summary_frame.grid(row=2, column=0, sticky="w")
 
+        ec = EqrvController(self.historical_earnings, self.info_data, self.hist_range)
+        # index information about the current stock and competitor stocks
+        self.symbol = self.info_data.get('symbol')
+        self.stock_list = [self.symbol, 'INTC', 'AAPL', 'AMD']
+        self.stock_info = ec.handle_competitor_info(competitors=self.stock_list)
+        self.current_stock = []
+
         # Column Labels
         def column_names():
-            col_labels: tuple = ("Security Name", "Mkt Cap", 'P/E', 'EV/EBITDA', 'EV/REV','Current Ratio', 'Quick Ratio', 'PEG Ratio', 'Short Ratio')
+            """The column names for the widget"""
+            col_labels: tuple = ("Name", "Mkt Cap", 'P/E', 'EV/EBITDA', 'EV/REV','Current Ratio', 'Quick Ratio', 'PEG Ratio', 'Short Ratio')
             # Horizontal line
             separator = ttk.Separator(summary_frame, orient="horizontal", style='Line.TSeparator')
             separator.grid(sticky="ew", row=1, column=0, columnspan=20)
@@ -248,44 +251,102 @@ class Eqrv:
                     label.grid(row=0, column=col_label, sticky="e")
                     separator.grid(sticky="ns", row=0, column=col_label + 1, padx=5)
 
-        # Competitor rows
-        def competitors() -> list[tuple]:
+        def stock_stats():
+            """Displays all relevant metrics on the current and competitor stocks"""
+            start_index = 2
+            for row_index, comp in enumerate(self.stock_info, start_index):
+                security_name: str = self.stock_info[comp]['long_name']
+                mkt_cap: str = f"{round(self.stock_info[comp]['mkt_cap'] / 1000000000, 2)}B"
+                current_pe_multiple: str = f"{round(self.stock_info[comp]['current_pe_multiple'], 1)}x"
+                enterprise_ebitda: float = round(self.stock_info[comp]['enterprise/ebitda'], 1)
+                enterprise_revenue: float = round(self.stock_info[comp]['enterprise/revenue'], 1)
+                current_ratio: float = round(self.stock_info[comp]['currentRatio'], 1)
+                quick_ratio: float = round(self.stock_info[comp]['quickRatio'], 1)
+                peg_ratio: float = round(self.stock_info[comp]['pegRatio'], 1)
+                short_ratio: float = round(self.stock_info[comp]['shortRatio'], 1)
 
-            all_row_data = []
-            for row_index, comp in enumerate(self.comp_list, start=2):
-                security_name: str = self.comp_info[comp]['long_name']
-                mkt_cap: float = round(self.comp_info[comp]['mkt_cap'] / 1000000000, 2)
-                current_pe_multiple: float = round(self.comp_info[comp]['current_pe_multiple'], 1)
-                enterprise_ebitda: float = self.comp_info[comp]['enterprise/ebitda']
-                enterprise_revenue: float = self.comp_info[comp]['enterprise/revenue']
-                current_ratio: float = self.comp_info[comp]['currentRatio']
-                quick_ratio: float = self.comp_info[comp]['quickRatio']
-                peg_ratio: float = self.comp_info[comp]['pegRatio']
-                short_ratio: float = self.comp_info[comp]['shortRatio']
+                # the first index contains information on the current stock
+                if row_index == start_index:
+                    self.current_stock = (security_name, mkt_cap, current_pe_multiple,
+                                         enterprise_ebitda, enterprise_revenue, current_ratio,
+                                         quick_ratio, peg_ratio, short_ratio)
+
 
                 competitor_metrics: tuple = (security_name, mkt_cap, current_pe_multiple,
                                       enterprise_ebitda, enterprise_revenue, current_ratio,
                                       quick_ratio, peg_ratio, short_ratio)
-                # append everything to all_row_data for calculation of mean
-                all_row_data.append(competitor_metrics[1:])
-                for col_index, metric in enumerate(range(0, len(competitor_metrics) * 2, 2)):
-                    label = tk.Label(summary_frame, bg="black", fg="orange", text=competitor_metrics[col_index])
-                    if col_index == 0:
+
+                for col_index, metric in enumerate(range(0, len(competitor_metrics) * 2, start_index)):
+                    label = tk.Label(summary_frame, bg="black", fg="orange",
+                                     text=competitor_metrics[col_index])
+                    if comp == self.symbol:
+                        label = tk.Label(summary_frame, bg="black", fg="deep sky blue",
+                                         text=competitor_metrics[col_index])
+                        if col_index == 0:
+                            label.grid(row=row_index, column=metric, sticky="w", pady=8)
+                        else:
+                            label.grid(row=row_index, column=metric, sticky="e", pady=8)
+                    elif col_index == 0:
                         label.grid(row=row_index, column=metric, sticky="w")
-                    elif col_index == 1:
-                        label = tk.Label(summary_frame, bg="black", fg="orange", text=f"{competitor_metrics[col_index]}B")
-                        label.grid(row=row_index, column=metric, sticky="e")
-                    elif col_index == 2:
-                        label = tk.Label(summary_frame, bg="black", fg="orange",
-                                         text=f"{competitor_metrics[col_index]}x")
-                        label.grid(row=row_index, column=metric, sticky="e")
                     else:
                         label.grid(row=row_index, column=metric, sticky="e")
-            return all_row_data
-        # Current stock
+        # Mean stats row
+        def mean_stats():
+            name: str = 'Mean'
+            mean_mkt_cap: str = f"{round(sum(self.stock_info.loc['mkt_cap'].values) / len(self.stock_info.loc['mkt_cap'].values) / 1000000000000, 2)}B"
+            mean_current_pe_multiple: str = f"{round(sum(self.stock_info.loc['current_pe_multiple'].values) / len(self.stock_info.loc['current_pe_multiple'].values), 1)}x"
+            mean_enterprise_ebitda: float = round(sum(self.stock_info.loc['enterprise/ebitda'].values) / len(self.stock_info.loc['enterprise/ebitda'].values), 1)
+            mean_enterprise_revenue: float = round(sum(self.stock_info.loc['enterprise/revenue'].values) / len(self.stock_info.loc['enterprise/revenue'].values), 1)
+            mean_current_ratio: float = round(sum(self.stock_info.loc['currentRatio'].values) / len(self.stock_info.loc['currentRatio'].values), 1)
+            mean_quick_ratio: float = round(sum(self.stock_info.loc['quickRatio'].values) / len(self.stock_info.loc['quickRatio'].values), 1)
+            mean_peg_ratio: float = round(sum(self.stock_info.loc['pegRatio'].values) / len(self.stock_info.loc['pegRatio'].values), 1)
+            mean_short_ratio: float = round(sum(self.stock_info.loc['shortRatio'].values) / len(self.stock_info.loc['shortRatio'].values), 1)
+
+            means: tuple = (name, mean_mkt_cap, mean_current_pe_multiple, mean_enterprise_ebitda,
+                           mean_enterprise_revenue, mean_current_ratio, mean_quick_ratio,
+                           mean_peg_ratio, mean_short_ratio)
+
+            second_last_row = len(self.stock_list) + 4
+            for col_index, metric in enumerate(range(0, len(means) * 2, 2)):
+                    label = tk.Label(summary_frame, bg="black", fg="white",
+                                     text=means[col_index])
+                    if col_index == 0:
+                        label.grid(row=second_last_row, column=metric, sticky="w")
+                    else:
+                        label.grid(row=second_last_row, column=metric, sticky="e")
+            return means
+
+        def premium_calculation(current_stock, means):
+
+            premium = []
+            for stock_data, mean_data in zip(current_stock[2:], means[2:]):
+                if type(stock_data) is str or type(mean_data) is str:
+                    stock_float, mean_float = float(stock_data.strip('x')), float(mean_data.strip('x'))
+                    # remove the 'x' letter from the current_pe_multiple column, convert to float and round
+                    premium.append(f"{round((mean_float - stock_float)/ mean_float * 100)}%")
+                else:
+                    premium.append(f"{round((mean_data - stock_data)/ mean_data * 100)}%")
+
+            end_row = len(self.stock_list) + 5
+            # title in first column
+            label = tk.Label(summary_frame, bg="black", fg="deep sky blue",
+                             text=f"{self.symbol} Premium")
+            label.grid(row=end_row, column=0, sticky="w")
+            for col_index, metric in enumerate(range(0, len(premium) * 2, 2)):
+                label = tk.Label(summary_frame, bg="black", fg="deep sky blue",
+                                 text=premium[col_index])
+                label.grid(row=end_row, column=metric + 4, sticky="e")
+
+            return means
 
         column_names()
-        row_data = competitors()
+        stock_stats()
+        separator = ttk.Separator(summary_frame, orient='horizontal', style='Line.TSeparator')
+        separator.grid(row=len(self.stock_list) + 3, column=0, sticky="ew", columnspan=20, pady=(10,0))
+        means = mean_stats()
+        premium_calculation(self.current_stock, means)
+
+
 
 
 

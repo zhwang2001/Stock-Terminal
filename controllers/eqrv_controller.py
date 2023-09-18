@@ -1,9 +1,5 @@
-from typing import Literal
-
 import pandas as pd
-
-from models.des_model import DesModel
-from models.eqrv_model import EqrvModel
+from pandas import DataFrame
 from yahooquery import Ticker
 import yfinance as yf
 from datetime import datetime
@@ -24,50 +20,30 @@ class EqrvController:
         for recommendation in recommendations[self.symbol]['recommendedSymbols']:
             self.ticker_list.append(recommendation['symbol'])
 
-        """
-        for ticker in ticker_list:
-            eqrv = EqrvModel(ticker)
-            eqrv.get_earnings()
-            self.stock_earnings.append(eqrv.get_earnings())
-        """
 
-    def handle_stock_info(self) -> dict:
+    def handle_stock_info(self) -> dict[dict]:
         """
         event handler for recording info on the current stock
-        Extracted from alpha vantage and yfinance api
-        :return: summary_dict
+        Extracted from the yfinance api
+        :return: dict
         """
-        # The most recent reported EPS of the stock
-        current_eps = None
-        # A dictionary containing the competitors long name, ticker,
+        dc = DesModel(self.symbol)
+        info = dc.get_info()
+        trailing_eps = info.get('trailingEps')
+        enterprise_to_revenue = info.get('enterpriseToRevenue')
+        enterprise_to_ebitda = info.get('enterpriseToEbitda')
+        quick_ratio = info.get('quickRatio')
+        current_ratio = info.get('currentRatio')
+        pegRatio = info.get('pegRatio')
+        shortRatio = info.get('shortRatio')
+
         stock_summary_dict = {}
-
-        stock_hist_avg = []
-        mkt_cap = self.info_data.get('marketCap')
-        current_price = self.info_data.get('currentPrice')
-        ticker = self.info_data.get('symbol')
-        long_name = self.info_data.get('longName')
-
-        for index, date in enumerate(self.hist_earnings):
-            # first index contains the most recent eps
-            eps = self.hist_earnings[date][0]
-            stock_hist_avg.append(float(eps))
-            if index == 0:
-                current_eps = eps
-            elif index + 1 == self.hist_range * 4:
-                break
-
-        # the stocks current pe multiple
-        pe_multiple = current_price / float(current_eps)
-        # Store info on each stock
-        stock_summary_dict[ticker] = {
-            'long_name': long_name, 'ticker': ticker,
-            'mkt_cap': mkt_cap, 'pe_multiple': pe_multiple,
-            'avg_eps': sum(stock_hist_avg) / len(stock_hist_avg)
-        }
+        stock_summary_dict[self.symbol] = {trailing_eps, enterprise_to_revenue,
+                                           enterprise_to_ebitda, quick_ratio,
+                                           current_ratio, pegRatio, shortRatio}
         return stock_summary_dict
 
-    def handle_competitor_info(self, competitors: list[str] | None = None) -> dict[str, dict[str, int, float, list[float]]]:
+    def handle_competitor_info(self, competitors: list[str] | None = None) -> DataFrame:
         """
         event handler for getting info on equivalent peers Aggregate information on the stock and competitors needed for equities comparison
         Extracted from the yahooquery api (faster for numerous tickers)
@@ -119,8 +95,6 @@ class EqrvController:
                 pegRatio = info.get('pegRatio')
                 shortRatio = info.get('shortRatio')
 
-                # last index contains the most recent reported EPS
-                current_eps = my_earnings_dict['epsActual'][ticker].values[-1]
                 # all earnings in an array
                 all_eps = my_earnings_dict['epsActual'][ticker].values
                 t12m_eps = sum(all_eps) / len(all_eps)
@@ -134,12 +108,12 @@ class EqrvController:
                 date_strings = [date.strftime('%Y-%m-%d') for date in date_objects]
 
 
-                hist_comp_pe = []
                 # the end goal of this for loop is to divide the eps data by the stock price near the eps release date to obtain historical PE
                 # 1. utilize yahoo query to obtain a range of historical stock prices
                 # 2. store all the dates in an array
                 # 3. index the stored dates using eps dates to obtain index
                 # 4. index the historical stock prices using index to get prices on the eps release dates
+                hist_comp_pe = []
                 for index, eps_date in enumerate(all_eps_dates):
                     # some eps release dates are on the weekend while the historical prices are all business days
                     # if the eps_date can't be found in the historical stock prices then find the closest day
@@ -182,7 +156,7 @@ class EqrvController:
                     'shortRatio': shortRatio,
                     't12m_eps': t12m_eps
                 }
-            return comp_info_dict
+            return pd.DataFrame(data=comp_info_dict)
         except Exception as e:
             print("Failed to fetch data from api: ", str(e))
 
