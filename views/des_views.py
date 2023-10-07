@@ -69,22 +69,22 @@ class Des:
 
         # Closing price of the day
         close_price = tk.Label(security_frame, font="Helvetica 10", padx='10', bg="black",
-                               fg="light green", text=f"C: ${round(self.info_data.get('currentPrice'), 2)}")
+                               fg="#66B3B3", text=f"C: ${round(self.info_data.get('currentPrice'), 2)}")
         close_price.grid(row=1, column=1)
 
         # Opening price of the day
         open_price = tk.Label(security_frame, font="Helvetica 10", padx='10', bg="black",
-                              fg="light green", text=f"O: ${round(self.info_data.get('open'), 2)}")
+                              fg="#66B3B3", text=f"O: ${round(self.info_data.get('open'), 2)}")
         open_price.grid(row=2, column=1)
 
         # Highest share price during the day
         high_price = tk.Label(security_frame, font="Helvetica 10", padx='10', bg="black",
-                              fg="light green", text=f"H: ${round(self.info_data.get('dayHigh'), 2)}")
+                              fg="#66B3B3", text=f"H: ${round(self.info_data.get('dayHigh'), 2)}")
         high_price.grid(row=1, column=2)
 
         # Lowest share price sold during the day
         low_price = tk.Label(security_frame, font="Helvetica 10", padx='10', bg="black",
-                             fg="light green", text=f"L: ${round(self.info_data.get('dayLow'), 2)}")
+                             fg="#66B3B3", text=f"L: ${round(self.info_data.get('dayLow'), 2)}")
         low_price.grid(row=2, column=2)
 
         # Sector information
