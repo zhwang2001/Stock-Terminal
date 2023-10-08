@@ -154,7 +154,7 @@ class MainView:
         if self.active_frame:
             self.active_frame.destroy()
 
-        # else if no active frame then assign one
+        # no active frame? then assign one
         self.active_frame = tk.Frame(self.root, bg="black")
         self.active_frame.grid(row=1, column=0, sticky='nsew')
         # All Available function views

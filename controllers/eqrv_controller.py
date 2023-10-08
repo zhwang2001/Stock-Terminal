@@ -13,12 +13,8 @@ class EqrvController:
         self.info_data = info_data
         self.hist_range = hist_range
         self.symbol = self.info_data.get('symbol')
-        # use recommendations as equivalent peers
-        self.ticker_list = []
-        # the 5 stocks that are most similar to the selected tickers
-        recommendations = Ticker(self.symbol).recommendations
-        for recommendation in recommendations[self.symbol]['recommendedSymbols']:
-            self.ticker_list.append(recommendation['symbol'])
+        # list of competitors obtained either through automatic recommendation, or through a custom list
+        self.stock_list = None
 
 
     def handle_stock_info(self) -> dict[dict]:
@@ -43,20 +39,28 @@ class EqrvController:
                                            current_ratio, pegRatio, shortRatio}
         return stock_summary_dict
 
-    def handle_competitor_info(self, competitors: list[str] | None = None) -> DataFrame:
+    def handle_competitor_info(self, stock_list: list[str] | None = None) -> DataFrame:
         """
         event handler for getting info on equivalent peers Aggregate information on the stock and competitors needed for equities comparison
         Extracted from the yahooquery api (faster for numerous tickers)
-        :param competitors: custom list of competitors to compare and analyze, leave blank to find peers automatically
+        :param stock_list: custom list of competitors to compare and analyze, leave blank to find peers automatically
         :returns: {ticker: {'long_name': str, 'mkt_cap': int, 'current_pe_multiple': float, 'hist_pe_multiple': list[float]}}
         """
+        self.stock_list = stock_list
+        # the 5 stocks that are most similar to the selected tickers
+        recommendations = Ticker(self.symbol).recommendations
         # if no competitors are provided then utilize the recommended peer group from yahoo api
-        if competitors is None:
-            competitors = self.ticker_list
+        if self.stock_list is None:
+            # add the current stock we're analyzing as well to be queried later
+            self.stock_list = [self.symbol]
+            for recommendation in recommendations[self.symbol]['recommendedSymbols']:
+                self.stock_list.append(recommendation['symbol'])
+        else:
+            self.stock_list.insert(0, self.symbol)
         # A dictionary filled with dictionaries containing the competitors long name, ticker, market cap, avg eps, pe multiple
         comp_info_dict = {}
         # join to form a string and pass as an argument to Ticker class
-        all_symbols = " ".join(competitors)
+        all_symbols = " ".join(self.stock_list)
 
         try:
             # query numerous ticker symbols quickly
@@ -79,7 +83,7 @@ class EqrvController:
             my_historical_dict = myInfo.history(interval="1d", start=earlier_date, end=later_date)
 
             # Record this info for every stock in competitors
-            for ticker in competitors:
+            for ticker in self.stock_list:
 
                 mkt_cap = my_summary_dict[ticker]['marketCap']
                 long_name = my_summary_dict[ticker]['longName']
