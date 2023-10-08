@@ -1,12 +1,8 @@
-import requests
-import pandas as pd
-from models.eqrv_model import EqrvModel
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from controllers.eqrv_controller import EqrvController
-from utilities.utils import date_conversion
 
 
 class Eqrv:
@@ -41,16 +37,13 @@ class Eqrv:
         self.eqrv_master.columnconfigure(0, weight=1)
 
     def main(self):
-        self.current_vs_historical()
+        #self.current_vs_historical()
+        self.comp_source()
+        self.tab_selector()
         self.summary_multiples()
 
-    def current_vs_historical(self):
-        """A table Compares current and historical metrics of selected stock and competitors"""
-
-        cvh_frame = tk.LabelFrame(self.eqrv_master, bg="black", fg="white", labelanchor="n",
-                                  text=f"Current vs {self.hist_range}yr Average Historical Premium")
-        cvh_frame.grid(row=1, column=0, sticky="w")
-
+    def tab_selector(self):
+        """Widget for changing comparative analysis"""
         tab_system = ttk.Notebook(self.eqrv_master)
         tabs = ['Comps', 'Market', "Self"]
         for tab_name in tabs:
@@ -58,6 +51,14 @@ class Eqrv:
             tab_system.add(tab, text=tab_name)
         tab_system.grid(row=0, column=0, columnspan=2,
                         sticky="sw")
+
+
+    def current_vs_historical(self):
+        """A table Compares current and historical metrics of selected stock and competitors"""
+        cvh_frame = tk.LabelFrame(self.eqrv_master, bg="black", fg="white", labelanchor="n",
+                                  text=f"Current vs {self.hist_range}yr Average Historical Premium")
+        cvh_frame.grid(row=1, column=0, sticky="w")
+
 
         separator_styles = ttk.Style()
         separator_styles.configure('Line.TSeparator', background='black')
@@ -72,7 +73,7 @@ class Eqrv:
         def column():
             # Earnings metrics
             metric = tk.Label(cvh_frame, bg="black", fg="white", text="Metric")
-            metric.grid(sticky="w", row=1, column=0)
+            metric.grid(sticky="w", row=1, column=0, columnspan=12)
 
             # current stock to comp price premium
             # how much more expensive is the stock compared to group mean right now
@@ -225,12 +226,14 @@ class Eqrv:
         summary_frame.grid(row=2, column=0, sticky="w")
 
         ec = EqrvController(self.historical_earnings, self.info_data, self.hist_range)
-        # index information about the current stock and competitor stocks
-        self.symbol = self.info_data.get('symbol')
-        self.stock_list = [self.symbol, 'INTC', 'AAPL', 'AMD']
-        self.stock_info = ec.handle_competitor_info(competitors=self.stock_list)
-        self.current_stock = []
+        # fetch new info on competitors in custom list
+        self.stock_info = ec.handle_competitor_info(stock_list=self.stock_list)
+        # Store recommended stocks in stock_list
+        self.stock_list = ec.stock_list
+        # make ticker symbol available globally
+        self.symbol = ec.symbol
 
+        self.current_stock = []
         # Column Labels
         def column_names():
             """The column names for the widget"""
@@ -290,6 +293,7 @@ class Eqrv:
                         label.grid(row=row_index, column=metric, sticky="w")
                     else:
                         label.grid(row=row_index, column=metric, sticky="e")
+
         # Mean stats row
         def mean_stats():
             name: str = 'Mean'
@@ -323,9 +327,9 @@ class Eqrv:
                 if type(stock_data) is str or type(mean_data) is str:
                     stock_float, mean_float = float(stock_data.strip('x')), float(mean_data.strip('x'))
                     # remove the 'x' letter from the current_pe_multiple column, convert to float and round
-                    premium.append(f"{round((mean_float - stock_float)/ mean_float * 100)}%")
+                    premium.append(f"{round((stock_float - mean_float)/ mean_float * 100)}%")
                 else:
-                    premium.append(f"{round((mean_data - stock_data)/ mean_data * 100)}%")
+                    premium.append(f"{round((stock_data - mean_data)/ mean_data * 100)}%")
 
             end_row = len(self.stock_list) + 5
             # title in first column
@@ -345,6 +349,40 @@ class Eqrv:
         separator.grid(row=len(self.stock_list) + 3, column=0, sticky="ew", columnspan=20, pady=(10,0))
         means = mean_stats()
         premium_calculation(self.current_stock, means)
+
+
+    def comp_source(self):
+        """Select your own custom peer group"""
+        frame = tk.LabelFrame(self.eqrv_master, bg="black", fg="orange",
+                              text='Comp Source', relief='flat')
+        frame.grid(row=0, column=0, sticky="e")
+        # Enter the ticker symbols separated by commas, no spaces
+        comp_entry = tk.Entry(frame, relief="raised", bg="orange", fg="black")
+        comp_entry.grid(row=0, column=1, sticky="ns")
+
+        submit_button = tk.Button(frame, command=lambda: self.handle_comp_info(comp_entry)
+                                  , text="Submit", fg="white", bg="black")
+        submit_button.grid(row=0, column=2, sticky="ns")
+
+
+    def handle_comp_info(self, comp_entry):
+        """
+        Callback function for comp_source(), retrieves user inputs and calls summary_multiples() again
+        :param comp_entry: user inputted competitors
+        """
+        # Forget the widgets in the eqrv_master
+        self.eqrv_master.grid_forget()
+        # Rebuild the widget
+        self.eqrv_master = tk.Frame(self.active_frame, bg="black")
+        self.eqrv_master.grid(row=1, column=0, sticky="nsew")
+        try:
+            comps_string = comp_entry.get()
+            comps_array = comps_string.split(",")
+            self.stock_list = comps_array
+            # Call main again
+            self.main()
+        except Exception as e:
+            print('Stock ticker not found or syntax incorrect', str(e))
 
 
 
