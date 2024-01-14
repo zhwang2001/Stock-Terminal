@@ -51,7 +51,18 @@ class Eqs:
             self.selection = sp
 
         tickers = yf.Tickers(self.selection)
-        for ticker in tickers.tickers:
+        for row, ticker in enumerate(tickers.tickers):
             #print(tickers.tickers[ticker].info.get("returnOnEquity"))
             if tickers.tickers[ticker].info.get("returnOnEquity") and tickers.tickers[ticker].info.get("returnOnEquity") > 0.35:
-                print(ticker)
+                self.display(ticker, row)
+
+    def display(self, ticker, row):
+        """
+        Displays the ticker information on the application window
+        :param ticker: the ticker info
+        :param row: the row the ticker will be displayed on
+        :return:
+        """
+        tick_info = tk.Label(self.active_frame, bg="black", fg="deep sky blue",
+                             text=ticker)
+        tick_info.grid(row=row, column=0, sticky="w", pady=8)

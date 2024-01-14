@@ -121,6 +121,11 @@ class MainView:
             dc = DesModel(query)
             self.historical_earnings = ec.get_earnings()
             self.info_data = dc.get_info()
+        if selection == "WATC":
+            dc = DesModel(query)
+            self.info_data = dc.get_info()
+            self.news_data = dc.get_news()
+            self.history_data = dc.get_history()
         # call the function here to get the function instead of selecting an item from the dropdown menu again
         self.function_navigate(selection)
 
@@ -162,7 +167,7 @@ class MainView:
             des = Des(self.active_frame, self.info_data, self.history_data, self.news_data, self.win_width, self.win_height)
             eqrv = Eqrv(self.active_frame, self.info_data, self.historical_earnings, self.win_width, self.win_height)
             eqs = Eqs(self.active_frame, self.info_data, self.win_width, self.win_height)
-            watc = Watc(self.active_frame, self.info_data, self.win_width, self.win_height)
+            watc = Watc(self.active_frame, self.info_data, self.news_data, self.win_width, self.win_height)
 
             functions = {"DES": des, "EQRV": eqrv, "EQS": eqs, "WATC": watc}
             function = functions[self.selection]
